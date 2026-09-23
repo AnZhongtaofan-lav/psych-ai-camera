@@ -2,7 +2,7 @@
 
 ---
 
-## ✅ 硬件层（全部通了）
+## ✅ 硬件层
 
 ### Framebuffer
 - **设备**: /dev/fb0，驱动 nxp-fb
@@ -24,16 +24,16 @@
 
 ### GNU/Linux
 - Linux 3.4.39 armv7l，系统名 GEC6818
-- 用户: root (无密码)
+- 用户: 默认 root 用户
 - 有完整 glibc: /lib/ld-linux.so.3 + /lib/libgcc_s.so + libjpeg/libpng14
 - **板子上没有 gcc/tcc/cmake/python3/make**
 
 ---
 
-## ✅ 交叉编译环境（搞定了！）
+## ✅ 交叉编译环境
 
 ### arm-none-eabi-gcc（裸机编译器，编裸机 C + 内联汇编 syscall 能跑 Linux！）
-- **安装位置**: D:\msys64\ucrt64\bin\arm-none-eabi-gcc.exe
+- **安装位置**: [MSYS2 路径]/ucrt64/bin/arm-none-eabi-gcc.exe
 - **版本**: GCC 16.1.0
 - **使用**: 在 mingw64 终端里跑，先 `export PATH=/ucrt64/bin:$PATH`
 
@@ -110,7 +110,7 @@ arm-none-eabi-gcc -e _start -nostdlib -nostartfiles -static syscalls.c main.c -o
 ## 🎯 LVGL 编译（进行中）
 
 ### LVGL 源码
-- **位置**: d:\psych-architect\psych\lvgl_sim\lvgl\src\
+- **位置**: [项目根目录]/lvgl_sim/lvgl/src/
 - **版本**: v9.x (lv_conf.h 里 COLOR_DEPTH 32)
 - **LVGL 用 STDLIB_BUILTIN**: malloc/strlen/sprintf 都是 LVGL 自己实现的！只需要我们提供 syscalls！
 
@@ -131,7 +131,7 @@ arm-none-eabi-gcc -e _start -nostdlib -nostartfiles -static syscalls.c main.c -o
 
 ### 编译命令（循环 226 个 LVGL .c）
 ```bash
-cd /d/psych-architect/psych/lvgl_sim
+cd [项目根目录]/lvgl_sim
 for f in $(find lvgl/src -name "*.c" ! -path "*/libs/fsdrv/*" ! -path "*/osal/*" ! -path "*/misc/*" ! -path "*/others/*" ! -path "*/drivers/sdl/*" ! -path "*/drivers/x11/*" -type f); do
     arm-none-eabi-gcc -c $f -o /tmp/$(basename $f).o \
         -DLV_USE_LIBPNG=0 -DLV_USE_FREETYPE=0 -DLV_USE_OS=0 \
@@ -157,25 +157,20 @@ done
 | 板子屏幕一半绿一半黑 | 因为之前按 16bit RGB565 算，实际是 32bit BGRX8888！只写了一半字节！ |
 | framebuffer 格式猜 RGB565 错 | fbset 里 `geometry 800 480 800 1440 32` + `rgba 8/16,8/8,8/0,8/24` → BGRX8888 32bit！ |
 | kernel.org 下的 gcc 是 x86_64 host 版 | 不能在板子跑！是 Windows/Linux PC 上跑的交叉编译器！ELF class=x86_64 → board 上 wrong ELF class！ |
-| 板子 eth0 ping 不通 Windows | 网段不同：板子 192.168.168.33 vs Windows 192.168.240.176！没路由器桥接！ |
+| 板子 eth0 ping 不通 PC | 网段不同，没路由器桥接！ |
 | 板子 USB gadget (g_ether) | modprobe g_ether 找不到！内核没编！ |
 | mingw64 ucrt64 arm-none-eabi-gcc 不在 PATH | mingw64 里先 `export PATH=/ucrt64/bin:$PATH` |
 | certutil 编出的 base64 有头尾 | sed '1d;$d' 去掉！ |
 
 ---
 
-## 🔑 关键文件路径
+## 🔑 关键文件路径（相对路径）
 
 | 文件 | 路径 | 作用 |
 |---|---|---|
-| syscalls.c | /tmp/syscalls.c (mingw64 里) | 迷你 C runtime，内联汇编 syscall |
-| fb_write32 | /tmp/fb_write32 | 编成功的 framebuffer 全绿验证程序 |
-| hello3 | /tmp/hello3 | 编成功的 write+printf 验证程序 |
-| main_board.c | D:\psych-architect\psych\lvgl_sim\main_board.c | 板子驱动入口（fbdev+evdev+V4L2） |
-| Makefile.arm | D:\psych-architect\psych\lvgl_sim\Makefile.arm | 原 Makefile（CROSS 指到 kernel.org 那个 gcc，不对） |
-| lv_conf.h | D:\psych-architect\psych\lvgl_sim\lv_conf.h | LVGL 配置（COLOR_DEPTH=32） |
-| LVGL 源码 | D:\psych-architect\psych\lvgl_sim\lvgl\src\ | v9.x 源码 |
-| arm-none-eabi-gcc | D:\msys64\ucrt64\bin\arm-none-eabi-gcc.exe | 16.1.0 交叉编译器 |
+| syscalls.c | src/syscalls.c | 迷你 C runtime，内联汇编 syscall |
+| fb_write32.c | src/fb_write32.c | framebuffer 全绿验证程序 |
+| main_board.c | src/main_board.c | 板子驱动入口（fbdev+evdev+V4L2） |
 
 ---
 
@@ -183,21 +178,26 @@ done
 
 ```
 开发板:     粤嵌 GEC6818 (S5PV210 Cortex-A8)
-屏幕:       800×480 7寸电阻触摸 (注意 fbset 报告 800x480，不是文档说的 1024x600！)
+屏幕:       800×480 7寸电阻触摸
 格式:       BGRX8888 32bit (不是 RGB565！)
-串口:       COM8 / 115200 / 8N1 (DEBUG口 USB→串口线)
-登录:       root (无密码)
+登录:       默认 root
 Framebuffer:/dev/fb0 (nxp-fb 驱动)
 触摸:       /dev/input/event0 (evdev)
 摄像头:     /dev/video0 (DCMI)
 网卡:       eth0 (未插网线)
-SSH:        :22 LISTEN (但 eth0 没通)
+SSH:        :22 LISTEN
 USB Host:   有 ×4
 SD卡槽:     有
-OTG烧录口:  有 (但 g_ether gadget 内核没编)
-IP:         192.168.168.33 (eth0，未插网线)
+OTG烧录口:  有
 ```
-[session_id: 6ab24f28e001dc3ce9380891 | topic_summary_time: 2026-09-22 19:08:40]用户继续粤嵌GEC6818 LVGL心理AI摄像头终端项目，尝试解决LVGL编译和运行问题。之前的编译命令因使用`-c`选项同时处理多个.c文件导致GCC报错，已通过`build_board.sh`脚本中的for循环逐个编译211个LVGL源文件解决。传输`gec6818_app.b64`到开发板后，执行时出现段错误，通过`dmesg`定位到可能与`ioctl`、`mmap`或`__aeabi_uidiv`相关。随后开发了`fb_probe`探测程序，发现问题根源是自定义`memset`被GCC内建函数替换导致无限递归爆栈，添加`-fno-builtin`选项修复。最终重新编译完整LVGL程序，包含r4/r5寄存器保护、`-fno-builtin`和补齐字符串函数等修复，准备再次通过串口传输`gec6818_app_b64.txt`到开发板运行。
-[session_id: 6ab24f28e001dc3ce9380891 | topic_summary_time: 2026-09-22 19:39:31]User encountered a black screen issue with the GEC6818 development board when running the LVGL application. The problem was traced to an incorrect framebuffer buffer size calculation in LVGL v9, where `lv_color_t` was treated as 3 bytes instead of XRGB8888's 4 bytes, causing an assertion failure at `lv_display.c:420` (stride * h <= buf_size). The buffer size was corrected to 1,536,000 bytes (800x480x32bpp), resolving the assertion. After retransmitting the updated `gec6818_app` (552964 bytes), the serial output showed `3 screens ready`, and the display showed the CHAT interface with a dark background, cyan title, and bottom navigation buttons. A subsequent `fb_lprobe` utility was used to verify framebuffer orientation, revealing the board was physically rotated 90 degrees counterclockwise relative to the framebuffer coordinates. Rotating the board corrected the display alignment, confirming the issue was due to physical orientation rather than software rotation.
-[session_id: 6ab24f28e001dc3ce9380891 | topic_summary_time: 2026-09-22 20:10:38]User is working on a project requiring camera image display, photo/video capture and viewing, LVGL interface design, and AI model interaction. Current status: LVGL interface (3 pages with buttons and navigation) is complete, but camera functions are not implemented (simulated gradient instead of real capture, capture/record buttons only print messages, media viewing page shows static text). The GEC6818 board has no recognized camera hardware (scanned video nodes are internal image processors, not capture devices). User lacks a USB camera and has no router for network connectivity; attempts to use phone USB tethering are pending driver verification. Next steps depend on obtaining a USB camera and resolving network access (via router, USB Ethernet adapter, or phone tethering) to implement remaining features.
-[session_id: 6ab24f28e001dc3ce9380891 | topic_summary_time: 2026-09-22 21:31:25]用户在GEC6818开发板上部署了包含CHAT、PHOTOS、VIDEO三个页面的LVGL应用。首先解决了固件传输和显示驱动问题，通过base64编码传输gec6818_app.b64文件并解码执行，确认800x480分辨率和触摸设备/dev/input/event0正常工作。接着修复触摸无响应问题，通过touch_probe程序收集触摸事件数据，调整坐标映射（1024x600缩放到800x480）和设置非阻塞读取，使页面切换和屏幕键盘输入功能正常。随后传输测试媒体文件（p1.jpg、p2.jpg、p3.jpg、v1.mjpeg）到/tmp/media目录，验证相册缩略图显示、全屏查看及视频播放功能。最后指导用户在siliconflow.cn注册获取免费API Key，配置agent_relay.py脚本，通过串口转发实现开发板与大模型的实时对话，完成智能体功能部署。
+
+---
+
+## 📋 开发里程碑摘要
+
+- **M1**: 交叉编译工具链打通，syscalls.c 实现 Linux syscall 内联汇编运行时
+- **M2**: framebuffer 驱动验证（全绿成功），确认 BGRX8888 32bit 格式
+- **M3**: LVGL v9 完整编译（~220 个源文件），解决 memset 内建递归爆栈（-fno-builtin）
+- **M4**: 三页 GUI 跑通（CHAT/CAM/PHOTOS/VIDEO），触摸坐标映射 1024×600 → 800×480
+- **M5**: 串口 base64 传输方案验证（无网无U盘场景）
+- **M6**: 相册缩略图 + MJPEG 视频播放 + 智能体串口协议（@@Q/@@A）
